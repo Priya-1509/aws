@@ -1,0 +1,49 @@
+name: Secrets Manager Demo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  retrieve-secret:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ✅ Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # ✅ Install jq (JSON parser)
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # ✅ Retrieve Secret from AWS Secrets Manager
+      - name: Retrieve Secret
+        id: retrieve-secret
+        run: |
+          SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id mydata \
+            --query SecretString \
+            --output text)
+
+          echo "Secret Retrieved Successfully"
+
+          DB_USERNAME=$(echo "$SECRET_JSON" | jq -r '.DB_USERNAME')
+          DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.DB_PASSWORD')
+
+          echo "DB_USERNAME=$DB_USERNAME" >> $GITHUB_ENV
+          echo "DB_PASSWORD=$DB_PASSWORD" >> $GITHUB_ENV
+
+      # ✅ Use Secret (Demo Only)
+      - name: Use Secret
+        run: |
+          echo "Database Username: $DB_USERNAME"
+          echo "Password : $DB_PASSWORD"
